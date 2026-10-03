@@ -1,0 +1,9 @@
+torch
+numpy
+pandas
+openpyxl
+scikit-learn
+fastapi
+uvicorn
+pydantic
+groq        # optional: only used if GROQ_API_KEY is set

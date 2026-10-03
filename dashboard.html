@@ -1,0 +1,202 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITPL corridor forecast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600&family=Archivo+Narrow:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#101828;--mute:#5b6577;--line:#d5dbe3;--noise:#c2410c;--cong:#1d4ed8;--co2:#0f766e;--warn:#b45309;--bad:#b91c1c;--ok:#15803d}
+@media (prefers-color-scheme:dark){:root{--bg:#0e131a;--panel:#161d27;--ink:#e8edf3;--mute:#93a0b3;--line:#2a3442;--noise:#fb923c;--cong:#7aa2ff;--co2:#2dd4bf;--warn:#fbbf24;--bad:#f87171;--ok:#4ade80}}
+*{box-sizing:border-box;margin:0}
+body{font:14px/1.45 Archivo,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:0 0 40px}
+h1,h2{font-family:"Archivo Narrow","Arial Narrow",sans-serif;font-weight:700}
+.top{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid var(--line)}
+h1{font-size:26px}.sub{color:var(--mute)}
+.badge{font-weight:600;padding:2px 10px;border-radius:99px;border:1px solid currentColor}
+.NORMAL{color:var(--ok)}.WARNING{color:var(--warn)}.CRITICAL{color:var(--bad)}
+.wrap{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:28px;padding:20px 24px;max-width:1280px;margin:auto}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+section{margin-bottom:28px}
+h2{font-size:20px;margin-bottom:4px}.note{color:var(--mute);font-size:12.5px;margin-bottom:10px;max-width:70ch}
+.row{display:grid;grid-template-columns:150px repeat(3,minmax(70px,1fr));gap:4px 14px;align-items:end;padding:12px 0 6px 14px;border-left:5px solid var(--c);background:var(--panel);margin-bottom:10px}
+.row .chart{grid-column:1/-1;height:110px;padding-right:12px}
+.big{font:700 38px/1 "Archivo Narrow","Arial Narrow",sans-serif;color:var(--c)}
+.lbl{font-weight:600}.tag{display:inline-block;font-size:11.5px;color:var(--mute);border-bottom:1px dotted var(--mute);cursor:help;margin-left:6px}
+.fc{text-align:left}.fc b{display:block;font:700 24px/1.1 "Archivo Narrow","Arial Narrow",sans-serif}.fc span{color:var(--mute);font-size:12px}
+.empty{font:400 16px/1.2 Archivo,sans-serif;color:var(--mute)}
+.panel{background:var(--panel);padding:14px 16px;margin-bottom:10px}
+.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
+@media(max-width:600px){.picks{grid-template-columns:1fr}}
+.pick b{font:700 17px "Archivo Narrow","Arial Narrow",sans-serif}.pick p{font-size:12.5px;margin-top:3px}
+.up{color:var(--bad)}.down{color:var(--ok)}
+button{font:600 13px Archivo,sans-serif;background:var(--ink);color:var(--bg);border:0;border-radius:4px;padding:7px 12px;cursor:pointer}
+button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}button.on{border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--cong);outline-offset:2px}
+.bar{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;font-size:12.5px;margin:5px 0}
+.bar i{display:block;height:9px;background:var(--cong);border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:right;padding:5px 4px;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mute)}
+#log{max-height:200px;overflow:auto;margin:8px 0}.m{margin:5px 0}.m.u{color:var(--cong)}
+.chat{display:flex;gap:6px}input{flex:1;font:inherit;padding:7px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="top">
+  <div><h1>ITPL corridor forecast</h1><div class="sub" id="clock">Connecting to the server…</div></div>
+  <div><span class="sub">Replay of recorded data. </span><span class="badge NORMAL" id="status">NORMAL</span></div>
+</div>
+ 
+<div class="wrap">
+<main>
+  <section>
+    <h2>Now and the next 3 hours</h2>
+    <p class="note">Solid line: the last 24 hours. Dashed line: the model's forecast. Dots: what was actually recorded afterwards (this is a replay, so the answer is known).</p>
+    <div id="rows"></div>
+  </section>
+ 
+  <section>
+    <h2>Traffic plan for this forecast</h2>
+    <p class="note">Optimised with MOPSO for the forecast congestion. Percentages compare each plan with a standard one (45 s green, 50 km/h, no diversion). These come from a simple traffic model with stated assumptions, not from measured junction data.</p>
+    <div class="panel"><div style="height:240px"><canvas id="pareto"></canvas></div>
+      <div class="picks" id="picks"></div>
+      <p style="margin-top:12px"><button id="rerun">Re-run for this hour</button></p></div>
+  </section>
+</main>
+ 
+<aside>
+  <section>
+    <h2>How accurate is it?</h2>
+    <p class="note">R² on later, unseen days (1 is perfect, 0 is no better than the average). “Repeat last” just copies the latest value.</p>
+    <div class="panel"><table id="acc"></table><p class="note" id="accnote" style="margin:8px 0 0"></p></div>
+  </section>
+  <section>
+    <h2>What drives the forecast</h2>
+    <p class="note">Input features whose shuffling hurts the forecast most. Time-of-day and weekday dominate because the collector estimates traffic from a time-of-day table.</p>
+    <div class="panel"><p><button class="alt on" data-t="noise_db">Noise</button> <button class="alt" data-t="congestion">Congestion</button> <button class="alt" data-t="co2">CO₂</button></p><div id="imp"></div></div>
+  </section>
+  <section>
+    <h2>Alerts</h2>
+    <div class="panel" id="alerts">No alerts yet.</div>
+  </section>
+  <section>
+    <h2>Ask the assistant</h2>
+    <div class="panel"><div id="log"><div class="m">Ask about the forecast, the traffic plan, alerts, or why the model predicts what it does.</div></div>
+      <div class="chat"><input id="q" aria-label="Question" placeholder="What is the forecast?"><button id="send">Send</button></div></div>
+  </section>
+</aside>
+</div>
+ 
+<script>
+const T=[{k:'noise_db',n:'Noise',u:'dB',c:'--noise',d:1},{k:'congestion',n:'Congestion',u:'0 to 1',c:'--cong',d:2},{k:'co2',n:'CO₂',u:'ppm',c:'--co2',d:1}];
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const hm=t=>t.slice(11,16), fmt=(v,d)=>v==null?null:Number(v).toFixed(d);
+const charts={}; let impData=null, impT='noise_db', lastPlan=0;
+ 
+document.getElementById('rows').innerHTML=T.map(t=>`<div class="row" style="--c:var(${t.c})">
+ <div><div class="lbl">${t.n}<span class="tag" id="tag-${t.k}">estimated</span></div><div class="big" id="now-${t.k}">–</div><span class="sub">${t.u}</span></div>
+ ${[1,2,3].map(h=>`<div class="fc"><span>in ${h} h</span><b id="f${h}-${t.k}">–</b></div>`).join('')}
+ <div class="chart"><canvas id="ch-${t.k}"></canvas></div></div>`).join('');
+ 
+function draw(t,s){
+  const hist=s.recent.map(r=>r[t.k]), fc=s.forecast.map(r=>r[t.k]), rec=s.recorded_next.map(r=>r[t.k]);
+  const labels=[...s.recent.map(r=>hm(r.time)),...s.forecast.map(r=>hm(r.time))];
+  const pad=a=>[...Array(24).fill(null),...a], last=hist[23]??null;
+  const ds=[{data:[...hist,null,null,null],borderColor:css(t.c),borderWidth:2,pointRadius:0,spanGaps:true,tension:.25},
+   {data:pad([last,...fc].slice(0,3)).map((v,i)=>i===23?hist[23]:v).concat([]),borderColor:css(t.c),borderDash:[5,4],borderWidth:2,pointRadius:0,spanGaps:true},
+   {data:pad(rec),borderWidth:0,backgroundColor:css(t.c),pointRadius:4,showLine:false}];
+  ds[1].data=[...Array(23).fill(null),hist[23]??null,...fc];
+  if(!charts[t.k]){charts[t.k]=new Chart(document.getElementById('ch-'+t.k),{type:'line',data:{labels,datasets:ds},
+   options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+   scales:{x:{ticks:{maxTicksLimit:7,color:css('--mute')},grid:{display:false}},y:{ticks:{color:css('--mute'),maxTicksLimit:4},grid:{color:css('--line')}}}}});}
+  else{const c=charts[t.k];c.data.labels=labels;c.data.datasets.forEach((d,i)=>d.data=ds[i].data);c.update();}
+}
+ 
+async function tick(){
+  let s; try{s=await (await fetch('/state')).json();}catch(e){document.getElementById('clock').textContent='Cannot reach the server. Start it with: uvicorn api:app --port 8000';return;}
+  document.getElementById('clock').textContent=`Replaying ${s.time} (hour ${s.step} of ${s.of} from the unseen test period)`;
+  const st=document.getElementById('status');st.textContent=s.anomaly.status;st.className='badge '+s.anomaly.status;st.title=s.anomaly.reasons.join('; ');
+  T.forEach(t=>{
+    const v=s.now[t.k], el=document.getElementById('now-'+t.k);
+    if(v==null){el.innerHTML='<span class="empty">no reading this hour</span>';}else el.textContent=fmt(v,t.d);
+    s.forecast.forEach((f,i)=>document.getElementById(`f${i+1}-${t.k}`).textContent=fmt(f[t.k],t.d));
+    const g=document.getElementById('tag-'+t.k); g.title=(s.estimated[t.k]||'measured')+(t.k==='co2'?'. '+s.co2_note:'');
+    draw(t,s);
+  });
+  document.getElementById('alerts').innerHTML=s.recent_anomalies.length?s.recent_anomalies.slice().reverse().map(a=>`<p class="m"><span class="${a.status}">${a.status}</span> ${hm(a.time)}: ${a.reasons.join('; ')}</p>`).join(''):'No alerts in the last 48 replayed hours.';
+  if(Date.now()-lastPlan>30000)plan(false);
+}
+ 
+async function plan(refresh){
+  lastPlan=Date.now(); const r=await (await fetch('/mopso'+(refresh?'?refresh=true':''))).json();
+  const P=r.pareto.map(p=>({x:p.travel_min,y:p.emissions_kg_h})), pk=r.picks, ref={x:r.reference.travel_min,y:r.reference.emissions_kg_h};
+  const pts=Object.values(pk).map(p=>({x:p.travel_min,y:p.emissions_kg_h}));
+  const ds=[{label:'Possible plans',data:P,backgroundColor:css('--cong'),pointRadius:3},{label:'Standard plan',data:[ref],backgroundColor:css('--mute'),pointRadius:7,pointStyle:'rectRot'},{label:'Picked plans',data:pts,backgroundColor:css('--noise'),pointRadius:7}];
+  if(charts.p){charts.p.data.datasets.forEach((d,i)=>d.data=ds[i].data);charts.p.update();}
+  else charts.p=new Chart(document.getElementById('pareto'),{type:'scatter',data:{datasets:ds},options:{animation:false,responsive:true,maintainAspectRatio:false,
+   plugins:{legend:{position:'bottom',labels:{color:css('--mute'),boxWidth:10}}},scales:{x:{title:{display:true,text:'Average trip through the corridor (minutes)',color:css('--mute')},ticks:{color:css('--mute')},grid:{color:css('--line')}},
+   y:{title:{display:true,text:'CO₂ from traffic (kg per hour)',color:css('--mute')},ticks:{color:css('--mute')},grid:{color:css('--line')}}}}});
+  const avg=o=>Object.values(o),mean=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length),cls=v=>v>0?'up':'down',sg=v=>(v>0?'+':'')+v+'%';
+  document.getElementById('picks').innerHTML=[['fastest','Fastest'],['balanced','Balanced'],['cleanest','Cleanest air']].map(([k,n])=>{const p=pk[k].plan;
+   return `<div class="pick"><b>${n}</b><p>Trip time <span class="${cls(pk[k].travel_change_pct)}">${sg(pk[k].travel_change_pct)}</span>, CO₂ <span class="${cls(pk[k].emissions_change_pct)}">${sg(pk[k].emissions_change_pct)}</span></p>
+   <p class="sub">Green light about ${mean(avg(p.green_s))} s, speed limit about ${mean(avg(p.speed_kmh))} km/h, diverted traffic ${Math.max(...avg(p.diverted_pct))}%.</p></div>`}).join('');
+}
+ 
+async function acc(){
+  const m=await (await fetch('/metrics')).json(), r=x=>x==null||isNaN(x.r2)?'n/a':x.r2.toFixed(2);
+  const rows=[['Noise',m.model.noise_db,m.persistence.noise_db,m.same_hour_yesterday.noise_db],['Congestion',m.model.congestion,m.persistence.congestion,m.same_hour_yesterday.congestion],
+   ['CO₂ (hold-out)',m.co2_holdout.model,m.co2_holdout.persistence,m.co2_holdout.same_hour_yesterday]];
+  document.getElementById('acc').innerHTML='<tr><th></th><th>Model</th><th>Repeat last</th><th>Same hour yesterday</th></tr>'+rows.map(x=>`<tr><td>${x[0]}</td><td><b>${r(x[1])}</b></td><td>${r(x[2])}</td><td>${r(x[3])}</td></tr>`).join('');
+  document.getElementById('accnote').textContent='CO₂ was only recorded from April to July, so it is scored on a held-out stretch of that period and is the weakest forecast.';
+}
+function imp(){const rows=impData[impT],mx=Math.max(...rows.map(r=>r.importance),1e-9);
+  document.getElementById('imp').innerHTML=rows.map(r=>`<div class="bar"><span>${r.feature}</span><i style="width:${Math.max(3,100*r.importance/mx)}%"></i></div>`).join('');
+  document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===impT));}
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{impT=b.dataset.t;imp();});
+document.getElementById('rerun').onclick=()=>plan(true);
+ 
+async function ask(){const q=document.getElementById('q'),v=q.value.trim();if(!v)return;q.value='';
+  const log=document.getElementById('log'),add=(c,t)=>{const d=document.createElement('div');d.className='m '+c;d.textContent=t;log.append(d);log.scrollTop=log.scrollHeight;return d};
+  add('u',v);const w=add('','…');
+  try{const r=await (await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:v})})).json();w.textContent=r.answer;}catch(e){w.textContent='The server did not answer.';}}
+document.getElementById('send').onclick=ask;document.getElementById('q').onkeydown=e=>{if(e.key==='Enter')ask()};
+ 
+(async()=>{impData=await (await fetch('/importance')).json();imp();acc();await tick();plan(false);setInterval(tick,4000);})();
+</script>
+</body>
+</html>
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Collapse

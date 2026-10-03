@@ -1,0 +1,104 @@
+{
+  "co2": [
+    {
+      "feature": "vehicle_count",
+      "importance": 0.0
+    },
+    {
+      "feature": "traffic_speed",
+      "importance": 0.0
+    },
+    {
+      "feature": "congestion",
+      "importance": 0.0
+    },
+    {
+      "feature": "noise_db",
+      "importance": 0.0
+    },
+    {
+      "feature": "temperature",
+      "importance": 0.0
+    },
+    {
+      "feature": "humidity",
+      "importance": 0.0
+    },
+    {
+      "feature": "pressure",
+      "importance": 0.0
+    },
+    {
+      "feature": "wind_speed",
+      "importance": 0.0
+    }
+  ],
+  "noise_db": [
+    {
+      "feature": "dow_cos",
+      "importance": 0.2899
+    },
+    {
+      "feature": "dow_sin",
+      "importance": 0.2027
+    },
+    {
+      "feature": "is_peak_hour",
+      "importance": 0.1907
+    },
+    {
+      "feature": "hour_sin",
+      "importance": 0.1044
+    },
+    {
+      "feature": "hour_cos",
+      "importance": 0.089
+    },
+    {
+      "feature": "is_weekend",
+      "importance": 0.0461
+    },
+    {
+      "feature": "traffic_speed",
+      "importance": 0.0167
+    },
+    {
+      "feature": "noise_db",
+      "importance": 0.0156
+    }
+  ],
+  "congestion": [
+    {
+      "feature": "dow_cos",
+      "importance": 0.348
+    },
+    {
+      "feature": "dow_sin",
+      "importance": 0.2554
+    },
+    {
+      "feature": "is_peak_hour",
+      "importance": 0.1914
+    },
+    {
+      "feature": "hour_sin",
+      "importance": 0.1029
+    },
+    {
+      "feature": "hour_cos",
+      "importance": 0.0944
+    },
+    {
+      "feature": "is_weekend",
+      "importance": 0.0503
+    },
+    {
+      "feature": "noise_db",
+      "importance": 0.0202
+    },
+    {
+      "feature": "traffic_speed",
+      "importance": 0.0195
+    }
+  ]
+}
